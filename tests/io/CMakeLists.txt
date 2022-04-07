@@ -1,0 +1,2 @@
+add_test_exec(disk_manager_test)
+add_test(NAME disk_manager_test COMMAND disk_manager_test)

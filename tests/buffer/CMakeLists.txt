@@ -1,0 +1,5 @@
+add_test_exec(lru_replacer_test)
+add_test(NAME lru_replacer_test COMMAND lru_replacer_test)
+
+add_test_exec(buffer_manager_test)
+add_test(NAME buffer_manager_test COMMAND buffer_manager_test)

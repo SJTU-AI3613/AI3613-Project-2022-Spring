@@ -1,0 +1,2 @@
+add_test_exec(table_heap_test)
+add_test(NAME table_heap_test COMMAND table_heap_test)

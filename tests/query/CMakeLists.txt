@@ -1,0 +1,27 @@
+add_test_exec(seq_scan_executor_test)
+add_test(NAME seq_scan_executor_test COMMAND seq_scan_executor_test)
+
+add_test_exec(insert_executor_test)
+add_test(NAME insert_executor_test COMMAND insert_executor_test)
+
+add_test_exec(update_executor_test)
+add_test(NAME update_executor_test COMMAND update_executor_test)
+
+add_test_exec(filter_executor_test)
+add_test(NAME filter_executor_test COMMAND filter_executor_test)
+
+add_test_exec(projection_executor_test)
+add_test(NAME projection_executor_test COMMAND projection_executor_test)
+
+add_test_exec(nested_loop_join_executor_test)
+add_test(NAME nested_loop_join_executor_test_without_predicate COMMAND nested_loop_join_executor_test)
+add_test(NAME nested_loop_join_executor_test_with_predicate COMMAND nested_loop_join_executor_test 1)
+
+add_test_exec(hash_join_executor_test)
+add_test(NAME hash_join_executor_test COMMAND hash_join_executor_test)
+
+add_test_exec(group_by_executor_test)
+add_test(NAME group_by_executor_test COMMAND group_by_executor_test)
+
+add_test_exec(aggregate_executor_test)
+add_test(NAME aggregate_executor_test COMMAND aggregate_executor_test)
