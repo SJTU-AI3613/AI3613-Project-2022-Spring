@@ -3,6 +3,8 @@
 #include "common/macros.h"
 #include "query/execution/executor_context.h"
 
+#include <vector>
+
 namespace naivedb {
 namespace buffer {
 class BufferManager;
