@@ -48,13 +48,13 @@ int main() {
         outputs.emplace_back(std::move(values));
     }
 
-    std::unordered_set<type::Value> set {
+    std::unordered_set<type::Value> set{
         type::Value(10, "Math"),
         type::Value(10, "Physics"),
         type::Value(10, "Chemistry"),
     };
 
-    for(size_t i = 0; i < 9; i += 3) {
+    for (size_t i = 0; i < 9; i += 3) {
         TEST_ASSERT_EQ(outputs[i][1], outputs[i + 1][1]);
         TEST_ASSERT_EQ(outputs[i + 1][1], outputs[i + 2][1]);
         auto iter = set.find(outputs[i][1]);
