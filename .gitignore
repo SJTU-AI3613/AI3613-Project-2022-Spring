@@ -263,3 +263,6 @@ docs/dev
 
 # Vagrant
 .vagrant
+
+# test file
+test.db
