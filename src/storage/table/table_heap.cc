@@ -4,24 +4,30 @@
 #include "common/constants.h"
 #include "common/exception.h"
 #include "common/types.h"
+#include "log/log_manager.h"
 #include "storage/table/table_page.h"
 #include "storage/tuple/tuple.h"
 #include "storage/tuple/tuple_id.h"
+#include "transaction/transaction.h"
 
 #include <cassert>
 #include <optional>
 
 namespace naivedb::storage {
-TableHeap::TableHeap(buffer::BufferManager *buffer_manager) : buffer_manager_(buffer_manager) {
+TableHeap::TableHeap(buffer::BufferManager *buffer_manager, log::LogManager *log_manager)
+    : buffer_manager_(buffer_manager), log_manager_(log_manager) {
     auto page = buffer_manager->new_page();
     assert(page);
     root_page_id_ = page->page_id();
-    TablePage(*std::move(page)).init(INVALID_PAGE_ID);
+    auto table_page = TablePage(*std::move(page));
+    auto latch = table_page.write_latch();
+    table_page.init(INVALID_PAGE_ID);
 }
 
-TableHeap::TableHeap(buffer::BufferManager *buffer_manager, page_id_t root_page_id)
-    : buffer_manager_(buffer_manager), root_page_id_(root_page_id) {}
+TableHeap::TableHeap(buffer::BufferManager *buffer_manager, page_id_t root_page_id, log::LogManager *log_manager)
+    : buffer_manager_(buffer_manager), root_page_id_(root_page_id), log_manager_(log_manager) {}
 
+// TODO(TA): use latch
 tuple_id_t TableHeap::insert_tuple(const Tuple &tuple) {
     auto root_page = buffer_manager_->fetch_page(root_page_id_);
     if (!root_page) {
@@ -56,6 +62,7 @@ tuple_id_t TableHeap::insert_tuple(const Tuple &tuple) {
     return TupleId(current_table_page.page_id(), slot_id).tuple_id();
 }
 
+// TODO(TA): use latch
 bool TableHeap::delete_tuple(tuple_id_t tuple_id) {
     auto [page_id, slot_id] = TupleId(tuple_id).page_id_and_slot_id();
     auto page = buffer_manager_->fetch_page(page_id);
@@ -102,16 +109,32 @@ std::optional<Tuple> TableHeap::get_tuple(tuple_id_t tuple_id) {
     if (!page) {
         return std::nullopt;
     }
-    return TablePage(*std::move(page)).get_tuple(slot_id);
+    auto table_page = TablePage(*std::move(page));
+    auto latch = table_page.read_latch();
+    return table_page.get_tuple(slot_id);
 }
 
-bool TableHeap::update_tuple(tuple_id_t tuple_id, const Tuple &tuple) {
+bool TableHeap::update_tuple(tuple_id_t tuple_id, const Tuple &tuple, transaction::Transaction *txn) {
     auto [page_id, slot_id] = TupleId(tuple_id).page_id_and_slot_id();
     auto page = buffer_manager_->fetch_page(page_id);
     if (!page) {
         return false;
     }
-    return TablePage(*std::move(page)).update_tuple(slot_id, tuple);
+    auto table_page = TablePage(*std::move(page));
+    auto latch = table_page.write_latch();
+    if (log_manager_) {
+        auto old_data = table_page.get_tuple(slot_id)->data();
+        auto new_data = tuple.data();
+        auto lsn = log_manager_->append_record(log::LogRecord(log::LogRecordType::Update,
+                                                              txn->transaction_id(),
+                                                              txn->lsn(),
+                                                              page_id,
+                                                              slot_id,
+                                                              std::move(old_data),
+                                                              std::move(new_data)));
+        txn->set_lsn(lsn);
+    }
+    return table_page.update_tuple(slot_id, tuple);
 }
 
 TableHeap::Iterator TableHeap::begin() {
@@ -119,6 +142,7 @@ TableHeap::Iterator TableHeap::begin() {
     assert(page);
 
     auto table_page = TablePage(*std::move(page));
+    auto latch = table_page.read_latch();
     auto slot_id = table_page.first_slot();
     // if root page is empty, find the first slot in the next page
     if (slot_id == INVALID_SLOT_ID) {
@@ -128,8 +152,10 @@ TableHeap::Iterator TableHeap::begin() {
         }
         auto next_page = buffer_manager_->fetch_page(next_page_id);
         assert(next_page);
+        auto next_table_page = TablePage(*std::move(next_page));
+        auto next_latch = next_table_page.read_latch();
         // except the root page, other pages must be non-empty
-        slot_id = TablePage(*std::move(next_page)).first_slot();
+        slot_id = next_table_page.first_slot();
         return Iterator(this, TupleId(next_page_id, slot_id).tuple_id());
     }
     return Iterator(this, TupleId(root_page_id_, slot_id).tuple_id());
@@ -143,6 +169,7 @@ TableHeap::Iterator &TableHeap::Iterator::operator++() {
     assert(page);
 
     auto table_page = TablePage(*std::move(page));
+    auto latch = table_page.read_latch();
     auto next_slot_id = table_page.next_slot(slot_id);
     // go to the next page
     if (next_slot_id == INVALID_SLOT_ID) {
@@ -153,8 +180,9 @@ TableHeap::Iterator &TableHeap::Iterator::operator++() {
         }
         auto next_page = table_heap_->buffer_manager_->fetch_page(next_page_id);
         assert(next_page);
-
-        next_slot_id = TablePage(*std::move(next_page)).first_slot();
+        auto next_table_page = TablePage(*std::move(next_page));
+        auto next_latch = next_table_page.read_latch();
+        next_slot_id = next_table_page.first_slot();
         tuple_id_ = TupleId(next_page_id, next_slot_id).tuple_id();
         return *this;
     }
@@ -174,6 +202,7 @@ TableHeap::Iterator &TableHeap::Iterator::operator--() {
     assert(page);
 
     auto table_page = TablePage(*std::move(page));
+    auto latch = table_page.read_latch();
     auto prev_slot_id = table_page.prev_slot(slot_id);
     // go to the previous page
     if (prev_slot_id == INVALID_SLOT_ID) {
@@ -184,8 +213,9 @@ TableHeap::Iterator &TableHeap::Iterator::operator--() {
         }
         auto prev_page = table_heap_->buffer_manager_->fetch_page(prev_page_id);
         assert(prev_page);
-
-        prev_slot_id = TablePage(*std::move(prev_page)).last_slot();
+        auto prev_table_page = TablePage(*std::move(prev_page));
+        auto prev_latch = prev_table_page.read_latch();
+        prev_slot_id = prev_table_page.last_slot();
         tuple_id_ = TupleId(prev_page_id, prev_slot_id).tuple_id();
         return *this;
     }

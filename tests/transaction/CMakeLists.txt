@@ -1,0 +1,5 @@
+add_test_exec(transaction_manager_test)
+
+add_test(NAME transaction_manager_test_rollback COMMAND transaction_manager_test rollback)
+add_test(NAME transaction_manager_test_query1 COMMAND transaction_manager_test rollback)
+add_test(NAME transaction_manager_test_query2 COMMAND transaction_manager_test rollback)

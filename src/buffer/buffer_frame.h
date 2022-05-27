@@ -3,6 +3,8 @@
 #include "common/constants.h"
 #include "common/types.h"
 
+#include <shared_mutex>
+
 namespace naivedb::buffer {
 /**
  * @brief BufferFrame is the container of disk pages and page metadata in memory.
@@ -24,11 +26,15 @@ class BufferFrame {
     bool dirty() const { return dirty_; }
     void set_dirty(bool dirty) { dirty_ = dirty; }
 
+    std::shared_mutex &rwlatch() { return rwlatch_; }
+
   private:
     char page_[PAGE_SIZE];
 
     page_id_t page_id_;
     uint32_t pin_count_;
     bool dirty_;
+
+    std::shared_mutex rwlatch_;
 };
 }  // namespace naivedb::buffer

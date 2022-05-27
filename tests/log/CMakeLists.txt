@@ -1,0 +1,2 @@
+add_test_exec(log_manager_test)
+add_test(NAME log_manager_test COMMAND log_manager_test)

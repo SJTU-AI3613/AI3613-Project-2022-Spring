@@ -27,8 +27,10 @@ std::optional<storage::PageGuard> BufferManager::fetch_page(page_id_t page_id) {
             replacer_->pin(iter->second);
         }
         frames_[iter->second].pin();
-        return storage::PageGuard(
-            frames_[iter->second].page(), page_id, [this, page_id](bool dirty) { unpin_page(page_id, dirty); });
+        return storage::PageGuard(frames_[iter->second].page(),
+                                  page_id,
+                                  &frames_[iter->second].rwlatch(),
+                                  [this, page_id](bool dirty) { unpin_page(page_id, dirty); });
     }
     if (!disk_manager_->page_allocated(page_id)) {
         return std::nullopt;
@@ -44,7 +46,8 @@ std::optional<storage::PageGuard> BufferManager::fetch_page(page_id_t page_id) {
     reset_frame_metadata(frame_id, page_id);
     disk_manager_->read_page(page_id, frame.page());
     frame.pin();
-    return storage::PageGuard(frame.page(), page_id, [this, page_id](bool dirty) { unpin_page(page_id, dirty); });
+    return storage::PageGuard(
+        frame.page(), page_id, &frame.rwlatch(), [this, page_id](bool dirty) { unpin_page(page_id, dirty); });
 }
 
 std::optional<storage::PageGuard> BufferManager::new_page() {
@@ -62,7 +65,8 @@ std::optional<storage::PageGuard> BufferManager::new_page() {
     reset_frame_metadata(frame_id, page_id);
     frame.pin();
     std::memset(frame.page(), 0, PAGE_SIZE);
-    return storage::PageGuard(frame.page(), page_id, [this, page_id](bool dirty) { unpin_page(page_id, dirty); });
+    return storage::PageGuard(
+        frame.page(), page_id, &frame.rwlatch(), [this, page_id](bool dirty) { unpin_page(page_id, dirty); });
 }
 
 bool BufferManager::delete_page(page_id_t page_id) {

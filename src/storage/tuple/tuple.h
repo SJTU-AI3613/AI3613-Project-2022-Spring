@@ -23,6 +23,8 @@ class Tuple {
   public:
     Tuple() = default;
 
+    explicit Tuple(const std::vector<char> &data) : data_(data) {}
+
     explicit Tuple(std::vector<char> &&data) : data_(std::move(data)) {}
 
     Tuple(const std::vector<type::Value> &values);

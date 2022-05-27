@@ -6,6 +6,7 @@
 
 #include <cstring>
 #include <functional>
+#include <shared_mutex>
 
 namespace naivedb::storage {
 /**
@@ -17,15 +18,21 @@ class PageGuard {
     DISALLOW_COPY(PageGuard)
 
   public:
-    PageGuard() : data_(nullptr), page_id_(INVALID_PAGE_ID), dirty_(false), unpin_callback_(NOP_CALLBACK) {}
+    PageGuard()
+        : data_(nullptr), page_id_(INVALID_PAGE_ID), dirty_(false), rwlatch_(nullptr), unpin_callback_(NOP_CALLBACK) {}
 
-    PageGuard(char *data, page_id_t page_id, std::function<void(bool)> &&unpin_callback)
-        : data_(data), page_id_(page_id), dirty_(false), unpin_callback_(std::move(unpin_callback)) {}
+    PageGuard(char *data, page_id_t page_id, std::shared_mutex *rwlatch, std::function<void(bool)> &&unpin_callback)
+        : data_(data)
+        , page_id_(page_id)
+        , dirty_(false)
+        , rwlatch_(rwlatch)
+        , unpin_callback_(std::move(unpin_callback)) {}
 
     PageGuard(PageGuard &&page_guard)
         : data_(page_guard.data_)
         , page_id_(page_guard.page_id_)
         , dirty_(page_guard.dirty_)
+        , rwlatch_(page_guard.rwlatch_)
         , unpin_callback_(std::move(page_guard.unpin_callback_)) {
         page_guard.unpin_callback_ = NOP_CALLBACK;
     }
@@ -35,6 +42,7 @@ class PageGuard {
         data_ = page_guard.data_;
         page_id_ = page_guard.page_id_;
         dirty_ = page_guard.dirty_;
+        rwlatch_ = page_guard.rwlatch_;
         unpin_callback_ = std::move(page_guard.unpin_callback_);
         page_guard.unpin_callback_ = NOP_CALLBACK;
         return *this;
@@ -56,10 +64,13 @@ class PageGuard {
 
     page_id_t page_id() const { return page_id_; }
 
+    std::shared_mutex &rwlatch() const { return *rwlatch_; }
+
   private:
     char *data_;
     page_id_t page_id_;
     bool dirty_;
+    std::shared_mutex *rwlatch_;
     std::function<void(bool)> unpin_callback_;
 
     static constexpr auto NOP_CALLBACK = [](bool) {};

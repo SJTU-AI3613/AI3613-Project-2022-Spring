@@ -7,10 +7,16 @@ file(GLOB NAIVEDB_SOURCES
     "query/execution/*.cc"
     "query/execution/executor/*.cc"
     "storage/table/*.cc"
-    "storage/tuple/*.cc")
+    "storage/tuple/*.cc"
+    "transaction/*.cc"
+    "log/*.cc"
+    "lock/*.cc")
 add_library(naivedb STATIC ${NAIVEDB_SOURCES})
 
 # link fmt
 target_link_libraries(naivedb fmt::fmt)
+
+# link Threads
+target_link_libraries(naivedb Threads::Threads)
 
 set_target_properties(naivedb PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})

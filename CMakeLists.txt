@@ -17,6 +17,9 @@ add_compile_options(-pedantic -Wall -Werror)
 # Add fmt
 find_package(fmt REQUIRED)
 
+# Add Threads
+find_package(Threads REQUIRED)
+
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)

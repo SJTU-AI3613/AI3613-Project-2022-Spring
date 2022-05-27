@@ -2,6 +2,7 @@
 
 #include <fmt/core.h>
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 namespace fmt {
 struct naivedb_base_formatter {

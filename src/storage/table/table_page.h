@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <shared_mutex>
 
 namespace naivedb {
 namespace storage {
@@ -59,6 +60,10 @@ class TablePage {
     }
 
     ~TablePage() = default;
+
+    std::shared_lock<std::shared_mutex> read_latch() const { return std::shared_lock(page_.rwlatch()); }
+
+    std::unique_lock<std::shared_mutex> write_latch() const { return std::unique_lock(page_.rwlatch()); }
 
     void init(page_id_t prev_page_id);
 

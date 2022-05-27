@@ -3,8 +3,10 @@
 #include "catalog/catalog.h"
 #include "catalog/table_info.h"
 #include "common/utils.h"
+#include "lock/lock_manager.h"
 #include "storage/table/table_heap.h"
 #include "storage/tuple/tuple.h"
+#include "transaction/transaction.h"
 
 namespace naivedb::query {
 void SeqScanExecutor::init() {

@@ -12,6 +12,12 @@ class BufferManager;
 namespace storage {
 class Tuple;
 }
+namespace log {
+class LogManager;
+}
+namespace transaction {
+class Transaction;
+}
 }  // namespace naivedb
 
 namespace naivedb::storage {
@@ -47,9 +53,9 @@ class TableHeap {
     };
 
   public:
-    explicit TableHeap(buffer::BufferManager *buffer_manager);
+    explicit TableHeap(buffer::BufferManager *buffer_manager, log::LogManager *log_manager = nullptr);
 
-    TableHeap(buffer::BufferManager *buffer_manager, page_id_t root_page_id);
+    TableHeap(buffer::BufferManager *buffer_manager, page_id_t root_page_id, log::LogManager *log_manager = nullptr);
 
     page_id_t root_page_id() const { return root_page_id_; }
 
@@ -59,7 +65,7 @@ class TableHeap {
 
     std::optional<Tuple> get_tuple(tuple_id_t tuple_id);
 
-    bool update_tuple(tuple_id_t tuple_id, const Tuple &tuple);
+    bool update_tuple(tuple_id_t tuple_id, const Tuple &tuple, transaction::Transaction *txn = nullptr);
 
     Iterator begin();
 
@@ -68,5 +74,7 @@ class TableHeap {
   private:
     buffer::BufferManager *buffer_manager_;
     page_id_t root_page_id_;
+
+    log::LogManager *log_manager_;
 };
 }  // namespace naivedb::storage
