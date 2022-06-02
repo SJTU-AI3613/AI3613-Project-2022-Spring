@@ -32,7 +32,8 @@ Transaction *TransactionManager::begin_transaction() {
         txn = iter->second.get();
     }
     if (log_manager_) {
-        log_manager_->append_record(log::LogRecord(log::LogRecordType::Begin, txn_id, txn->lsn()));
+        auto lsn = log_manager_->append_record(log::LogRecord(log::LogRecordType::Begin, txn_id, txn->lsn()));
+        txn->set_lsn(lsn);
     }
     return txn;
 }
@@ -43,7 +44,8 @@ void TransactionManager::abort_transaction(txn_id_t txn_id) {
         return;
     }
     if (log_manager_) {
-        log_manager_->append_record(log::LogRecord(log::LogRecordType::Abort, txn_id, txn->lsn()));
+        auto lsn = log_manager_->append_record(log::LogRecord(log::LogRecordType::Abort, txn_id, txn->lsn()));
+        txn->set_lsn(lsn);
     }
     txn->set_state(TransactionState::Aborted);
     rollback(txn);
@@ -56,8 +58,9 @@ void TransactionManager::commit_transaction(txn_id_t txn_id) {
         return;
     }
     if (log_manager_) {
-        log_manager_->append_record(log::LogRecord(log::LogRecordType::Commit, txn_id, txn->lsn()));
+        auto lsn = log_manager_->append_record(log::LogRecord(log::LogRecordType::Commit, txn_id, txn->lsn()));
         log_manager_->flush();
+        txn->set_lsn(lsn);
     }
     txn->set_state(TransactionState::Committed);
     release_all_locks(txn);
