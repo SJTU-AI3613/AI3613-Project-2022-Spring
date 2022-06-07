@@ -5,6 +5,7 @@
 #include "storage/page/page_guard.h"
 
 #include <cstdint>
+#include <mutex>
 #include <optional>
 #include <shared_mutex>
 
